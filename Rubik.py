@@ -6,6 +6,8 @@ import time
 from rubik.solve import Solver
 from rubik.optimize import optimize_moves
 from rubik.cube import Cube
+import base64
+
 
 if "scramble_moves" not in st.session_state:
     st.session_state.scramble_moves = 20
@@ -583,14 +585,14 @@ def main():
         with open(filename) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-    # # remove the header of main page
-    # load_css(r"Styles/header_st.css")
+    # remove the header of main page
+    load_css(r"Styles/header_st.css")
 
-    # # reduce whitespace in sidebar and main page
-    # load_css(r"Styles/whitespace_st.css")
+    # reduce whitespace in sidebar and main page
+    load_css(r"Styles/whitespace_st.css")
 
-    # # load border style (for logo)
-    # load_css(r"Styles/logo_sidebar.css")
+    # load border style (for logo)
+    load_css(r"Styles/logo_sidebar.css")
 
     
 
@@ -607,21 +609,33 @@ def main():
 
     # Sidebar with all controls and information
     with st.sidebar:
-        
-        # Cube Status Section
-        st.markdown(
-        "<h1 style='text-align: center;'>📊 Cube Status</h1>", 
-            unsafe_allow_html=True
-        )
-                
+
+            # Prepare ditimo logo as base64
+        with open("logo.png", "rb") as img_file:
+            img_bytes = img_file.read()
+            img_base64 = base64.b64encode(img_bytes).decode()
+
+            # Use the styled HTML structure
+            st.markdown(
+                f"""
+                <div class="neon-border-container">
+                    <div class="neon-border">
+                        <img src="data:image/png;base64,{img_base64}" />
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            
         # Move History
         if st.session_state.move_history:
 
-            st.subheader("📝 Recent Moves")
+            st.markdown(
+                "<h1 style='text-align: center;'>📝 Recent Moves</h1>", 
+                    unsafe_allow_html=True
+                )
             st.write(" → ".join(st.session_state.move_history[-100:]))
-        
-        st.markdown("---")
-        
+                
         # Animation Settings
         st.markdown(
         "<h1 style='text-align: center;'>⚙️ Animation Settings</h1>", 
