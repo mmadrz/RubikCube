@@ -729,7 +729,10 @@ def main():
         
         # Solver Controls Section
         if st.session_state.solution:
-            st.header("⚙️ Solver Controls")
+            st.markdown(
+                "<h1 style='text-align: center;'>⚙️ Solver Controls</h1>", 
+                    unsafe_allow_html=True
+                )
             
             st.write(f"**Total moves:** {len(st.session_state.solution)}")
             
