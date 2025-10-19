@@ -327,16 +327,15 @@ def create_3d_cube_visualization(cube_state, color_map, animation_phase=0, rotat
     
     fig.update_layout(
         scene=dict(
-            xaxis=dict(visible=False, range=[-1.8, 1.8]),  # 2/1.25 = 1.6
-            yaxis=dict(visible=False, range=[-1.8, 1.8]),  # 2/1.25 = 1.6
-            zaxis=dict(visible=False, range=[-1.8, 1.8]),  # 2/1.25 = 1.6
+            xaxis=dict(visible=False, range=[-1.8, 1.8]),
+            yaxis=dict(visible=False, range=[-1.8, 1.8]),
+            zaxis=dict(visible=False, range=[-1.8, 1.8]),
             aspectmode='cube',
             camera=dict(
-                eye=dict(x=1.2, y=-1.2, z=1.2)  # 1.5/1.25 = 1.2
+                eye=dict(x=1.5, y=-1.5, z=1.5)
             )
         ),
         margin=dict(l=0, r=0, t=0, b=0),
-        height=700,
         showlegend=False
     )
     return fig
@@ -424,14 +423,10 @@ def add_sticker(fig, center, normal, color):
         flatshading=True
     ))
 
-def create_2d_net_visualization(cube_state, color_map):
+def create_2d_net_visualization(cube_state, color_map, animation_phase=0, rotating_face=None, clockwise=True):
     fig = go.Figure()
     
-    # Define positions for each face in the net
-    # Standard cube net layout:
-    #   U
-    # L F R B
-    #   D
+    # Define fixed positions for each face in the net
     face_positions = {
         'U': {'x_range': [4, 7], 'y_range': [7, 10]},  # Top center
         'L': {'x_range': [1, 4], 'y_range': [4, 7]},   # Left middle
@@ -453,9 +448,9 @@ def create_2d_net_visualization(cube_state, color_map):
         
         for i in range(3):
             for j in range(3):
-                # Calculate sticker position - note: i is row, j is column
+                # Calculate sticker position
                 x0 = x_start + j * sticker_size_x
-                y0 = y_start + (2 - i) * sticker_size_y  # Flip vertically to match standard orientation
+                y0 = y_start + (2 - i) * sticker_size_y
                 x1 = x0 + sticker_size_x
                 y1 = y0 + sticker_size_y
                 
@@ -473,26 +468,51 @@ def create_2d_net_visualization(cube_state, color_map):
                     hoverinfo="none"
                 ))
     
-    # Set up the layout to properly display the net
+    # FIXED: Complete layout lockdown to prevent any zooming/shifting
     fig.update_layout(
-        width=400,
-        height=700,
+
         xaxis=dict(
             showgrid=False, 
             zeroline=False, 
-            showticklabels=False, 
+            showticklabels=False,
+            showline=False,
             range=[0, 14],
             scaleanchor="y",
-            scaleratio=1
+            scaleratio=1,
+            constrain="domain",
+            fixedrange=True,
+            autorange=False
         ),
         yaxis=dict(
             showgrid=False, 
             zeroline=False, 
-            showticklabels=False, 
-            range=[0, 11]
+            showticklabels=False,
+            showline=False,
+            range=[0, 11],
+            scaleanchor="x",
+            scaleratio=1,
+            constrain="domain",
+            fixedrange=True,
+            autorange=False
         ),
         margin=dict(l=20, r=20, t=20, b=20),
+        autosize=False,
+        # Additional constraints to prevent any interaction
+        dragmode=False,
+        hovermode=False,
+        # Lock the entire layout
+        uirevision='constant'  # This is key - prevents any view changes
     )
+    
+    # Add invisible points at the corners to enforce the fixed range
+    fig.add_trace(go.Scatter(
+        x=[0, 14, 14, 0],
+        y=[0, 0, 11, 11],
+        mode='markers',
+        marker=dict(size=0, opacity=0),
+        showlegend=False,
+        hoverinfo='skip'
+    ))
     
     return fig
 
@@ -617,8 +637,8 @@ def main():
         )
         st.session_state.animation_speed = st.slider(
             "Animation Speed", 
-            min_value=10, 
-            max_value=20, 
+            min_value=1, 
+            max_value=50, 
             value=5, 
             step=1,
             help="Adjust the speed of cube rotations"
@@ -780,15 +800,15 @@ def main():
             st.session_state.cube.get_cube_state(),
             st.session_state.cube.color_map
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2)
 
     # Handle animations
     if st.session_state.animation_phase > 0:
-        st.session_state.animation_phase += 0.1 * st.session_state.animation_speed
+        st.session_state.animation_phase += 0.03 * st.session_state.animation_speed
         if st.session_state.animation_phase >= 1:
             st.session_state.animation_phase = 0
             st.session_state.rotating_face = None
-        time.sleep(0.05)
+        time.sleep(.3)
         st.rerun()
 
     # Auto-play functionality
