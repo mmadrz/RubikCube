@@ -1,0 +1,39 @@
+/* glowing text animation */
+@keyframes glowing-text {
+    0% {
+        color: #F63366;
+    }
+    50% {
+        color: #ff78788a;
+    }
+    100% {
+        color: #F63366;
+    }
+}
+
+.glowing-text {
+    font-size: 16px;
+    font-weight: bold;
+    font-family: 'Arial', sans-serif;
+    text-transform: uppercase;
+    animation: glowing-text 2s ease-in-out infinite;
+    color: #F63366;  /* fallback */
+    text-align: center;
+    margin: 0 0px;
+}
+
+/* Horizontal line */
+.line {
+    border: none;
+    border-top: 2px solid #F63366;
+    height: 0;
+    flex-grow: 1;
+    margin: 0 10px;
+}
+/* Wrapper for centered content */
+.wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}

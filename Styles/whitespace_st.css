@@ -1,0 +1,8 @@
+/* Reducing whitespace on the top of the page */
+.block-container {
+    padding-top: 0%;
+    margin-top: -45px;
+    padding-bottom: 0%;
+    padding-left: 1%;
+    padding-right: 2.5%;
+}

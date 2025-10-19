@@ -1,0 +1,30 @@
+.stApp {
+  background: #111; /* fallback */
+  background-image:
+    repeating-radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.05), transparent 10px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 1px, transparent 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 3px),
+    linear-gradient(-45deg, #00f0ff, #7effa1, #ff4dd2, #00f0ff);
+  background-size: 300% 300%, 40px 40px, 40px 40px, 600% 600%;
+  background-blend-mode: screen;
+  animation: plasmaFlow 25s ease infinite;
+  transition: background 0.3s ease-in-out;
+  color: #f0f0f0;
+}
+
+@keyframes plasmaFlow {
+  0%   { background-position: 0 0, 0 0, 0 0, 0% 50%; }
+  50%  { background-position: 50px 50px, 20px 10px, 10px 20px, 100% 50%; }
+  100% { background-position: 0 0, 0 0, 0 0, 0% 50%; }
+}
+
+section.stSidebar {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(200, 200, 255, 0.05),
+    rgba(255, 255, 255, 0.08)
+  );
+  backdrop-filter: blur(8px) saturate(50%);
+  transition: background 0.5s ease;
+}

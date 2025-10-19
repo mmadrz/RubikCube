@@ -1,0 +1,42 @@
+/* Shrink and move the main header to the top-right corner */
+header[data-testid="stHeader"] {
+    background: none !important;
+    height: auto !important;
+    width: 20vw !important;
+    margin-left: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 999;
+}
+
+/* Prevent inner elements from stretching */
+header[data-testid="stHeader"] > div {
+    width: 100% !important;
+    display: flex;
+    justify-content: flex-end;
+}
+/* Just visually move the icon without affecting layout */
+[data-testid="stMainMenu"] button {
+    transform: translateY(0px);
+}
+
+/* Move the toolbar up */
+.stAppToolbar {
+    padding: 0.25rem !important;
+    position: relative;
+    top: -3px;
+    left: -5px;
+    z-index: 1000;
+}
+
+/* Remove the top-left decoration bar */
+#stDecoration {
+    display: none !important;
+}

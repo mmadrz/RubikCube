@@ -1,0 +1,49 @@
+/* Make all tab texts bold and slightly larger */
+div[data-baseweb="tab-list"] button[data-baseweb="tab"] p {
+    font-weight: bold !important;
+    font-size: 15px !important;
+    margin: 0;
+    color: #ffffffe9;
+}
+
+
+div[data-baseweb="tab-list"] {
+    transform: translateY(-20px) !important;
+    isolation: isolate !important;  /* Creates new stacking context */
+}
+
+/* Animated glowing gradient text on selected tab */
+div[data-baseweb="tab-list"] button[data-baseweb="tab"][aria-selected="true"] p {
+    background: linear-gradient(270deg,
+        #00ffff, #00aaff, #0044ff, #8800ff, 
+        #ff00aa, #ff0044, #ffaa00, #00ff55, #00ffff);
+    background-size: 800% 800%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+    animation: snake-text-glow 6s linear infinite;
+}
+
+/* Glowing highlight underline for selected tab */
+div[data-baseweb="tab-highlight"] {
+    height: 3px !important;
+    background: linear-gradient(270deg,
+        #00ffff, #00aaff, #0044ff, #8800ff, 
+        #ff00aa, #ff0044, #ffaa00, #00ff55, #00ffff);
+    background-size: 800% 800%;
+    animation: snake-bar-glow 6s linear infinite;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Animations */
+@keyframes snake-text-glow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes snake-bar-glow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
