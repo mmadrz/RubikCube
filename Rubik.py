@@ -583,14 +583,14 @@ def main():
         with open(filename) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-    # remove the header of main page
-    load_css(r"Styles/header_st.css")
+    # # remove the header of main page
+    # load_css(r"Styles/header_st.css")
 
-    # reduce whitespace in sidebar and main page
-    load_css(r"Styles/whitespace_st.css")
+    # # reduce whitespace in sidebar and main page
+    # load_css(r"Styles/whitespace_st.css")
 
-    # load border style (for logo)
-    load_css(r"Styles/logo_sidebar.css")
+    # # load border style (for logo)
+    # load_css(r"Styles/logo_sidebar.css")
 
     
 
@@ -804,11 +804,11 @@ def main():
 
     # Handle animations
     if st.session_state.animation_phase > 0:
-        st.session_state.animation_phase += 0.03 * st.session_state.animation_speed
+        st.session_state.animation_phase += 0.05 * st.session_state.animation_speed
         if st.session_state.animation_phase >= 1:
             st.session_state.animation_phase = 0
             st.session_state.rotating_face = None
-        time.sleep(.3)
+        time.sleep(.5)
         st.rerun()
 
     # Auto-play functionality
