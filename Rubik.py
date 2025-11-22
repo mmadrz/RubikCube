@@ -17,7 +17,7 @@ class RubiksCube:
         # Corrected face definitions with proper orientation
         self.faces = {
             'U': np.full((3, 3), 'white', dtype='<U6'),    # Up
-            'R': np.full((3, 3), 're09d', dtype='<U6'),      # Right  
+            'R': np.full((3, 3), 'red', dtype='<U6'),      # Right  <-- fixed typo 're09d' -> 'red'
             'F': np.full((3, 3), 'green', dtype='<U6'),    # Front
             'D': np.full((3, 3), 'yellow', dtype='<U6'),   # Down
             'L': np.full((3, 3), 'orange', dtype='<U6'),   # Left
@@ -282,63 +282,154 @@ class RubiksCube:
 def create_3d_cube_visualization(cube_state, color_map, animation_phase=0, rotating_face=None, clockwise=True):
     fig = go.Figure()
     
-    # Define face positions and orientations
+    # face normals from previous setup (keeps sticker orientation logic)
     face_positions = {
-        'F': {'center': [0, 0, 1.5], 'normal': [0, 0, 1], 'up': [0, 1, 0]},
-        'R': {'center': [1.5, 0, 0], 'normal': [1, 0, 0], 'up': [0, 1, 0]},
-        'B': {'center': [0, 0, -1.5], 'normal': [0, 0, -1], 'up': [0, 1, 0]},
-        'L': {'center': [-1.5, 0, 0], 'normal': [-1, 0, 0], 'up': [0, 1, 0]},
-        'U': {'center': [0, 1.5, 0], 'normal': [0, 1, 0], 'up': [0, 0, 1]},
-        'D': {'center': [0, -1.5, 0], 'normal': [0, -1, 0], 'up': [0, 0, -1]}
+        'F': {'center': [0, 0, 1.5], 'normal': [0, 0, 1]},
+        'R': {'center': [1.5, 0, 0], 'normal': [1, 0, 0]},
+        'B': {'center': [0, 0, -1.5], 'normal': [0, 0, -1]},
+        'L': {'center': [-1.5, 0, 0], 'normal': [-1, 0, 0]},
+        'U': {'center': [0, 1.5, 0], 'normal': [0, 1, 0]},
+        'D': {'center': [0, -1.5, 0], 'normal': [0, -1, 0]}
     }
     
+    # helper to snap a coordinate to nearest cubie center (layer centers are at -1.5, 0, 1.5)
+    layer_centers = [-1.5, 0.0, 1.5]
+    def nearest_center(v):
+        return min(layer_centers, key=lambda c: abs(c - v))
+    
+    size = 0.9  # sticker quad size (keeps same sticker scale)
+    
+    # collect quads per cubie key (cx, cy, cz)
+    cubie_quads = {}  # key -> list of (verts[4], color_hex)
+    
+    # build stickers (same positions as before) but group them by cubie center
     for face_char, face_data in cube_state.items():
         face_info = face_positions[face_char]
         for i in range(3):
             for j in range(3):
-                color = color_map.get(face_data[i, j], "#000000")
-                
-                # Calculate sticker position
+                # sticker center as before
                 x = j - 1
                 y = 1 - i
-                z = 0
-                
-                # Position the sticker on the face
                 if face_char in ['F', 'B', 'L', 'R']:
                     if face_char == 'F':
-                        pos = [x, y, 1.5]
+                        center = [x, y, 1.5]
                     elif face_char == 'B':
-                        pos = [-x, y, -1.5]
+                        center = [-x, y, -1.5]
                     elif face_char == 'R':
-                        pos = [1.5, y, -x]
+                        center = [1.5, y, -x]
                     elif face_char == 'L':
-                        pos = [-1.5, y, x]
-                else:  # U or D
+                        center = [-1.5, y, x]
+                else:
                     if face_char == 'U':
-                        pos = [x, 1.5, -y]
+                        center = [x, 1.5, -y]
                     else:  # D
-                        pos = [x, -1.5, y]
-                
-                # Apply animation rotation if this sticker is part of the rotating face
-                if rotating_face is not None and animation_phase > 0:
-                    if _is_sticker_on_face(face_char, i, j, rotating_face):
-                        angle = animation_phase * 90 * (-1 if clockwise else 1)
-                        pos = _rotate_sticker(pos[0], pos[1], pos[2], rotating_face, angle)
-                
-                add_sticker(fig, pos, face_info['normal'], color)
-    
+                        center = [x, -1.5, y]
+
+                normal = face_info['normal']
+                # compute quad verts (exact same geometry as before)
+                if abs(normal[0]) == 1:
+                    v0 = [center[0], center[1] - size/2, center[2] - size/2]
+                    v1 = [center[0], center[1] + size/2, center[2] - size/2]
+                    v2 = [center[0], center[1] + size/2, center[2] + size/2]
+                    v3 = [center[0], center[1] - size/2, center[2] + size/2]
+                elif abs(normal[1]) == 1:
+                    v0 = [center[0] - size/2, center[1], center[2] - size/2]
+                    v1 = [center[0] + size/2, center[1], center[2] - size/2]
+                    v2 = [center[0] + size/2, center[1], center[2] + size/2]
+                    v3 = [center[0] - size/2, center[1], center[2] + size/2]
+                else:
+                    v0 = [center[0] - size/2, center[1] - size/2, center[2]]
+                    v1 = [center[0] + size/2, center[1] - size/2, center[2]]
+                    v2 = [center[0] + size/2, center[1] + size/2, center[2]]
+                    v3 = [center[0] - size/2, center[1] + size/2, center[2]]
+
+                verts = [v0, v1, v2, v3]
+                # determine which cubie these sticker verts belong to by nearest cubie-center
+                cx = nearest_center(center[0])
+                cy = nearest_center(center[1])
+                cz = nearest_center(center[2])
+                key = (cx, cy, cz)
+                color_hex = color_map.get(face_data[i, j], "#000000")
+                cubie_quads.setdefault(key, []).append((verts, color_hex))
+
+    # If a rotating layer is active, compute rotation angle
+    angle = 0.0
+    if rotating_face is not None and animation_phase > 0:
+        angle = animation_phase * 90 * (-1 if clockwise else 1)
+
+    # For each cubie, optionally rotate all its vertices together and add one Mesh3d trace
+    for cubie_key, quads in cubie_quads.items():
+        cx, cy, cz = cubie_key
+        verts_x = []
+        verts_y = []
+        verts_z = []
+        tri_i = []
+        tri_j = []
+        tri_k = []
+        vertex_colors = []
+        vc = 0
+
+        # decide if this cubie should be rotated as part of the active rotating face
+        rotate_this = False
+        if rotating_face == 'F' and abs(cz - 1.5) < 1e-6:
+            rotate_this = True
+        if rotating_face == 'B' and abs(cz + 1.5) < 1e-6:
+            rotate_this = True
+        if rotating_face == 'R' and abs(cx - 1.5) < 1e-6:
+            rotate_this = True
+        if rotating_face == 'L' and abs(cx + 1.5) < 1e-6:
+            rotate_this = True
+        if rotating_face == 'U' and abs(cy - 1.5) < 1e-6:
+            rotate_this = True
+        if rotating_face == 'D' and abs(cy + 1.5) < 1e-6:
+            rotate_this = True
+
+        for verts, col in quads:
+            # rotate quad verts together if cubie is in rotating layer
+            transformed = []
+            for (vx, vy, vz) in verts:
+                if rotate_this and angle != 0.0:
+                    vx2, vy2, vz2 = _rotate_sticker(vx, vy, vz, rotating_face, angle)
+                else:
+                    vx2, vy2, vz2 = vx, vy, vz
+                verts_x.append(vx2)
+                verts_y.append(vy2)
+                verts_z.append(vz2)
+                vertex_colors.append(col)
+                transformed.append((vx2, vy2, vz2))
+            # two triangles for the quad
+            tri_i.append(vc + 0); tri_j.append(vc + 1); tri_k.append(vc + 2)
+            tri_i.append(vc + 0); tri_j.append(vc + 2); tri_k.append(vc + 3)
+            vc += 4
+
+        if vc == 0:
+            continue
+
+        fig.add_trace(go.Mesh3d(
+            x=verts_x,
+            y=verts_y,
+            z=verts_z,
+            i=tri_i,
+            j=tri_j,
+            k=tri_k,
+            vertexcolor=vertex_colors,
+            flatshading=True,
+            opacity=1.0,
+            showscale=False,
+            lighting=dict(ambient=0.7, diffuse=0.6, roughness=0.9, specular=0.05)
+        ))
+
     fig.update_layout(
         scene=dict(
-            xaxis=dict(visible=False, range=[-1.8, 1.8]),
-            yaxis=dict(visible=False, range=[-1.8, 1.8]),
-            zaxis=dict(visible=False, range=[-1.8, 1.8]),
+            xaxis=dict(visible=False, range=[-2.0, 2.0]),
+            yaxis=dict(visible=False, range=[-2.0, 2.0]),
+            zaxis=dict(visible=False, range=[-2.0, 2.0]),
             aspectmode='cube',
-            camera=dict(
-                eye=dict(x=1.5, y=-1.5, z=1.5)
-            )
+            camera=dict(eye=dict(x=1.5, y=-1.5, z=1.5))
         ),
         margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False
+        showlegend=False,
+        uirevision='constant'
     )
     return fig
 
@@ -602,10 +693,15 @@ def main():
         st.session_state.current_step = 0
         st.session_state.auto_playing = False
         st.session_state.move_history = []
-        st.session_state.animation_phase = 0
+        # animation pipeline: progress [0..1], pending_move applied when progress reaches 1
+        st.session_state.animation_progress = 0.0
+        st.session_state.pending_move = None
         st.session_state.rotating_face = None
         st.session_state.clockwise = True
-        st.session_state.animation_speed = 0.5
+        # number of internal frames to use for smoothness
+        st.session_state.animation_frames = 30
+        # user-facing speed multiplier (1..20). higher -> faster progress per rerun
+        st.session_state.animation_speed = 30
 
     # Sidebar with all controls and information
     with st.sidebar:
@@ -642,20 +738,29 @@ def main():
             unsafe_allow_html=True
         )
         st.session_state.scramble_moves = st.slider(
-            "Number of Scramble Moves",
-            min_value=5,
-            max_value=100,
-            value=20,
+             "Number of Scramble Moves",
+             min_value=5,
+             max_value=100,
+             value=20,
+             step=1,
+             help="Select the number of random moves for scrambling the cube"
+         )
+        # user controls for animation smoothness and speed
+        st.session_state.animation_frames = st.slider(
+            "Animation Smoothness (frames)",
+            min_value=30,
+            max_value=90,
+            value=st.session_state.animation_frames,
             step=1,
-            help="Select the number of random moves for scrambling the cube"
+            help="Increase frames for smoother rotations (slower per frame)"
         )
         st.session_state.animation_speed = st.slider(
-            "Animation Speed", 
-            min_value=1, 
-            max_value=50, 
-            value=5, 
+            "Animation Speed (multiplier)",
+            min_value=1,
+            max_value=100,
+            value=st.session_state.animation_speed,
             step=1,
-            help="Adjust the speed of cube rotations"
+            help="Higher value makes animations progress faster"
         )
         
         st.markdown("---")
@@ -674,7 +779,7 @@ def main():
                 st.session_state.solution = []
                 st.session_state.current_step = 0
                 st.session_state.auto_playing = False
-                st.session_state.animation_phase = 0
+                st.session_state.animation_progress = 0
                 st.rerun()
         with col2:
             if st.button("✅ Solve", use_container_width=True):
@@ -695,7 +800,7 @@ def main():
             st.session_state.current_step = 0
             st.session_state.auto_playing = False
             st.session_state.move_history = []
-            st.session_state.animation_phase = 0
+            st.session_state.animation_progress = 0
             st.rerun()
         
         st.markdown("---")
@@ -713,16 +818,12 @@ def main():
             for i, p in enumerate(primes):
                 mvstr = mv + p
                 if cols[i].button(mvstr, use_container_width=True):
-                    # Start animation
-                    st.session_state.animation_phase = 0.1
+                    # Start a smooth animation: set pending_move and start progress
+                    st.session_state.pending_move = mvstr
+                    st.session_state.animation_progress = 0.001
                     st.session_state.rotating_face = mv
                     st.session_state.clockwise = not mvstr.endswith("'")
-                    
-                    # Apply the move to update both visualizations
-                    st.session_state.cube.apply_move(mvstr)
-                    st.session_state.move_history.append(mvstr)
                     st.session_state.auto_playing = False
-                    
                     st.rerun()
         
         st.markdown("---")
@@ -762,9 +863,12 @@ def main():
             with c3:
                 if st.button("⏭ Next", use_container_width=True):
                     if st.session_state.current_step < len(st.session_state.solution):
+                        # Start animation for next solution move (defer apply until completion)
                         mv2 = st.session_state.solution[st.session_state.current_step]
-                        st.session_state.cube.apply_move(mv2)
-                        st.session_state.current_step += 1
+                        st.session_state.pending_move = mv2
+                        st.session_state.animation_progress = 0.001
+                        st.session_state.rotating_face = mv2[0]
+                        st.session_state.clockwise = not mv2.endswith("'")
                         st.session_state.auto_playing = False
                         st.rerun()
             
@@ -802,7 +906,7 @@ def main():
         fig3 = create_3d_cube_visualization(
             st.session_state.cube.get_cube_state(),
             st.session_state.cube.color_map,
-            st.session_state.animation_phase,
+            st.session_state.animation_progress,
             st.session_state.rotating_face,
             st.session_state.clockwise
         )
@@ -820,30 +924,43 @@ def main():
         st.plotly_chart(fig2)
 
     # Handle animations
-    if st.session_state.animation_phase > 0:
-        st.session_state.animation_phase += 0.05 * st.session_state.animation_speed
-        if st.session_state.animation_phase >= 1:
-            st.session_state.animation_phase = 0
+    # animation_progress is advanced each run; when it reaches 1.0 we apply pending_move
+    if st.session_state.animation_progress and st.session_state.pending_move:
+        # increment = (speed multiplier) * (1 / frames)
+        increment = (st.session_state.animation_speed / 10.0) * (1.0 / max(1, st.session_state.animation_frames))
+        st.session_state.animation_progress = min(1.0, st.session_state.animation_progress + increment)
+        if st.session_state.animation_progress >= 1.0:
+            # finalize move
+            try:
+                st.session_state.cube.apply_move(st.session_state.pending_move)
+            except Exception:
+                pass
+            st.session_state.move_history.append(st.session_state.pending_move)
+            # if this was an autoplayed solution move advance current_step
+            if st.session_state.auto_playing and st.session_state.solution and st.session_state.current_step < len(st.session_state.solution):
+                st.session_state.current_step += 1
+            # if this was manual "Next" also advance
+            elif not st.session_state.auto_playing and st.session_state.solution and st.session_state.current_step < len(st.session_state.solution) and st.session_state.pending_move == st.session_state.solution[st.session_state.current_step]:
+                st.session_state.current_step += 1
+            # reset animation state
+            st.session_state.pending_move = None
+            st.session_state.animation_progress = 0.0
             st.session_state.rotating_face = None
-        time.sleep(.5)
+        # small sleep to avoid hammering reruns (keeps animation smooth)
+        time.sleep(0.03)
         st.rerun()
 
     # Auto-play functionality
     if st.session_state.auto_playing and st.session_state.solution:
         if st.session_state.current_step < len(st.session_state.solution):
+            # start pending move and let animation handler apply the move when complete
             mv = st.session_state.solution[st.session_state.current_step]
-            
-            # Start animation for this move
-            st.session_state.animation_phase = 0.1
-            st.session_state.rotating_face = mv[0]
-            st.session_state.clockwise = not mv.endswith("'")
-            
-            # Apply the move to update both visualizations
-            st.session_state.cube.apply_move(mv)
-            st.session_state.move_history.append(mv)
-            st.session_state.current_step += 1
-            
-            time.sleep(0.8 / st.session_state.animation_speed)
+            if not st.session_state.pending_move:
+                st.session_state.pending_move = mv
+                st.session_state.animation_progress = 0.001
+                st.session_state.rotating_face = mv[0]
+                st.session_state.clockwise = not mv.endswith("'")
+            time.sleep(0.03)
             st.rerun()
         else:
             st.session_state.auto_playing = False
