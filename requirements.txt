@@ -1,16 +1,4 @@
-# Core runtime
-streamlit>=1.25.0
-numpy>=1.24.0
-plotly>=5.15.0
-
-# Rubik library used by the app (the code imports `from rubik.solve import Solver`,
-# `from rubik.optimize import optimize_moves`, `from rubik.cube import Cube`).
-# The exact PyPI package name can vary; install the package you used when writing the app.
-# Common choices (install one of these):
-rubik-cube>=0.1.0    # try this first if you used "rubik-cube"
-# rubik>=0.1.0       # uncomment/use this instead if the package on PyPI is named "rubik"
-
-# Notes:
-# - Adjust versions if you need compatibility with your environment.
-# - If you installed a local or custom rubik implementation, remove the rubik-cube line
-#   and ensure that implementation is available on PYTHONPATH when running the app.
+streamlit
+numpy
+plotly
+rubik-cube
