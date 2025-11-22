@@ -278,6 +278,86 @@ class RubiksCube:
                 self.faces['B'][i, j] = self._char_to_color(cube_str[idx])
                 idx += 1
 
+    def clone(self):
+        """Return a deep copy of this cube for search/apply without mutating original."""
+        new = RubiksCube()
+        for k, v in self.faces.items():
+            new.faces[k] = v.copy()
+        return new
+
+
+class InternalSolver:
+	"""Simple IDA* solver using RubiksCube.clone() and apply_move.
+	   Heuristic: count of misplaced stickers (divided so heuristic is admissible-ish).
+	"""
+	def __init__(self, max_depth=20, time_limit=8.0):
+		self.max_depth = max_depth
+		self.time_limit = time_limit
+		self.start_time = None
+		self.moves = ['F','R','U','B','L','D',
+					  "F'", "R'", "U'", "B'", "L'", "D'",
+					  'F2', 'R2', 'U2', 'B2', 'L2', 'D2']
+
+	def _heuristic(self, cube: RubiksCube):
+		# Count stickers not equal to face center; each move can fix multiple stickers,
+		# divide by 8 to keep heuristic small (admissible-ish for shallow searches).
+		cnt = 0
+		for face_char, face in cube.faces.items():
+			center = face[1,1]
+			cnt += np.sum(face != center)
+		return int(np.ceil(cnt / 8))
+
+	def _inverse(self, m):
+		if m.endswith("'"):
+			return m[:-1]
+		if m.endswith("2"):
+			return m
+		return m + "'"
+
+	def solve(self, cube: RubiksCube):
+		self.start_time = time.time()
+		if cube.is_solved():
+			return []
+		# IDA* loop
+		bound = self._heuristic(cube)
+		if bound == 0:
+			return []
+		path = []
+
+		def dfs(node: RubiksCube, g: int, bound: int, last_move: str):
+			if time.time() - self.start_time > self.time_limit:
+				return None, float('inf')
+			h = self._heuristic(node)
+			f = g + h
+			if f > bound or g > self.max_depth:
+				return None, f
+			if node.is_solved():
+				return [], f
+			min_t = float('inf')
+			for mv in self.moves:
+				# prune immediate inverse
+				if last_move and self._inverse(last_move) == mv:
+					continue
+				# apply move on clone
+				new_node = node.clone()
+				new_node.apply_move(mv)
+				res, t = dfs(new_node, g+1, bound, mv)
+				if res is not None:
+					return [mv] + res, t
+				if t < min_t:
+					min_t = t
+			return None, min_t
+
+		while True:
+			if time.time() - self.start_time > self.time_limit or bound > self.max_depth:
+				return []
+			result, t = dfs(cube.clone(), 0, bound, None)
+			if result is not None:
+				return result
+			if t == float('inf'):
+				return []
+			bound = int(t)
+
 
 def create_3d_cube_visualization(cube_state, color_map, animation_phase=0, rotating_face=None, clockwise=True):
     fig = go.Figure()
@@ -623,7 +703,10 @@ class RubiksSolver:
             
             # Verify the cube is valid
             if not self._is_valid_cube(rubik_cube):
-                return []
+                # try internal solver as fallback when rubik lib says invalid
+                internal = InternalSolver(max_depth=20, time_limit=6.0)
+                sol = internal.solve(cube)
+                return sol
             
             # Solve using the library
             solver = Solver(rubik_cube)
@@ -631,7 +714,12 @@ class RubiksSolver:
             
             # Check if solution was found
             if not solver.moves:
-                st.warning("No solution found - cube might already be solved")
+                # try internal solver before giving up
+                internal = InternalSolver(max_depth=20, time_limit=6.0)
+                sol = internal.solve(cube)
+                if sol:
+                    return sol
+                st.warning("No solution found by library; using fallback")
                 return []
             
             # Optimize the moves
@@ -640,7 +728,11 @@ class RubiksSolver:
             return optimized_moves
             
         except Exception as e:
-            # Fallback to a simple scramble reversal
+            # attempt internal solver before using reverse-only fallback
+            internal = InternalSolver(max_depth=20, time_limit=8.0)
+            sol = internal.solve(cube)
+            if sol:
+                return sol
             return self._fallback_solution(cube)
     
     def _is_valid_cube(self, rubik_cube):
