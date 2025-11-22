@@ -791,7 +791,7 @@ def main():
         st.session_state.rotating_face = None
         st.session_state.clockwise = True
         # number of internal frames to use for smoothness
-        st.session_state.animation_frames = 30
+        st.session_state.animation_frames = 10
         # user-facing speed multiplier (1..20). higher -> faster progress per rerun
         st.session_state.animation_speed = 30
 

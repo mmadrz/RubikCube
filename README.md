@@ -1,89 +1,98 @@
-# RubikCube — Interactive Solver & Visualizer
+# RubikCube — Interactive Visualizer & Solver
 
-A Streamlit-based interactive Rubik's Cube visualizer and solver with:
-- 3D and 2D net visualizations (Plotly).
-- Smooth animated layer rotations that keep cubies attached.
-- Solver pipeline that uses a Rubik library (when available) and an internal IDA* fallback.
-- Manual controls, scramble/reset, autoplay of solution, and basic move history.
+Professional, interactive Rubik's Cube web app built with Streamlit and Plotly.  
+Features a crisp 3D visualization with physically-correct cubie rotations, a 2D net view, manual controls, scramble/solve, and a solver pipeline that uses an external solver with an internal IDA* fallback.
 
-This repository contains a single-file Streamlit app: `Rubik.py`.
+Badges
+- Streamlit · Plotly · NumPy
 
-Contents
-- Rubik.py — main Streamlit app with visualization, animation pipeline and solver logic.
-- Styles/ — CSS used by the Streamlit UI (logo, header, layout tweaks).
-- logo.png — sidebar logo used in the app.
+Quick summary
+- Language: Python
+- UI: Streamlit
+- 3D renderer: Plotly Mesh3d (cubie-grouped meshes)
+- Solver: External rubik library (primary) + Internal IDA* fallback (secondary)
+- File: main app — `Rubik.py`
 
-Quick start
+Why this project
+- Educational demo of cube state modelling, visualization and simple search-based solving.
+- Clean UI for teaching cube notation and step-by-step solution playback.
+- Modular design so visualization and solver can be improved independently.
 
-1. Create and activate Python environment (recommended)
-   - python3 -m venv .venv
-   - source .venv/bin/activate  (Windows: .venv\Scripts\activate)
+Interactive demo (what to try)
+1. Click "Scramble" to randomize the cube (choose scramble length in sidebar).
+2. Use manual controls (F, R, U, B, L, D with '', ', 2) to apply moves and observe smooth animations.
+3. Click "Solve" — the app uses an external solver if present; otherwise it will try the internal IDA* fallback.
+4. Use Play / Pause / Next / Previous to step through the computed solution with animations.
 
-2. Install dependencies
-   - pip install streamlit plotly numpy rubik-cube==<if used>    # replace rubik-cube with actual package name if used
-   - (If a specific local rubik library is used, ensure it is installed or available in PYTHONPATH.)
+Installation
+
+1. Create a virtual environment (recommended)
+   - python -m venv .venv
+   - Windows: .venv\Scripts\activate
+   - macOS / Linux: source .venv/bin/activate
+
+2. Install requirements
+   - pip install -r requirements.txt
+   - If you have a different rubik package, install that and ensure names in requirements match.
 
 3. Run the app
    - streamlit run Rubik.py
-   - Open the URL shown in the terminal (usually http://localhost:8501).
+   - Open the local URL shown by Streamlit (usually http://localhost:8501).
 
-User guide (UI overview)
+User interface (concise)
 
 - Sidebar
-  - Logo and recent move history.
+  - Logo and recent moves
   - Animation Settings:
-    - Number of Scramble Moves — how many random moves for scramble.
-    - Animation Smoothness (frames) — higher = smoother but slower per move.
-    - Animation Speed (multiplier) — higher = faster overall animation.
-  - Cube Actions:
-    - Scramble — random scramble (resets solution).
-    - Solve — compute solution (uses rubik library if available; otherwise tries internal solver).
-    - Reset Cube — returns to solved state.
-  - Manual Controls:
-    - Buttons for every face move: F, R, U, B, L, D and their variants ("", "'", "2").
-    - Clicking launches a smooth animation and applies the move on completion.
-  - Solver Controls (when solution exists):
-    - Play / Pause / Next / Previous buttons and a compact solution display.
+    - Scramble length, Animation frames (smoothness), Animation speed (multiplier)
+  - Cube Actions: Scramble, Solve, Reset
+  - Manual Controls: Per-face move buttons (including primes and doubles)
+  - Solver Controls: Play / Pause / Next / Previous and solution text area
 
-- Main content
-  - Left: 3D Cube Visualization (Plotly). Uses cubie-grouped meshes so rotating layers move as real-world cube layers.
-  - Right: 2D Cube Net for quick state reading.
-  - Animations run in-place (placeholder) to avoid reloading the whole page per frame.
+- Main area
+  - Left: 3D cube (interactive camera disabled for consistent view)
+  - Right: 2D net (fixed, non-interactive)
+  - Move history and progress shown in the sidebar
 
-Solver details
+Solver internals (short)
+- Primary: Attempts to convert the app state to the external `rubik` library cube and run its solver.
+- Secondary: If the external solver fails, the app runs a compact IDA* search (InternalSolver) using a simple misplaced-sticker heuristic. This is intentionally conservative (configurable depth/time limit) and works for short scrambles.
+- Final fallback: If no solution is found, the app can reverse recent moves (move-history undo) as a last resort.
 
-- Primary: external rubik library integration (convert cube state to library format and call its solver).
-- Fallback: Internal IDA* solver (simple heuristic — misplaced stickers) used when:
-  - the library reports invalid/no-solution or raises exceptions,
-  - or when the library is not installed.
-- Final fallback: reverse recent move history (very simple undo) when no solver returns a plan.
+Performance tuning (practical)
+- Reduce "Animation Smoothness (frames)" to lower client work.
+- Increase "Animation Speed" to shorten per-move delays.
+- Use the 2D net only for very slow machines (less GPU/JS overhead).
+- For best client performance, use modern browsers (Chrome/Edge) and avoid very large frame counts.
 
-Notes on the internal solver
-- Small IDA* implementation tuned for short scrambles (configurable max_depth and time limits).
-- Works for short / moderate scrambles; expected exponential runtime for deep scrambles.
-- For production-level solving, integrate a two-phase algorithm (Kociemba) or use an optimized library.
-
-Performance tips
-- Reduce Animation Smoothness (frames) to speed up rendering on low-end machines.
-- Increase Animation Speed if animations feel slow.
-- The app batches geometry into cubie-based Mesh3d traces (27 meshes) to reduce browser overhead.
-- For very constrained devices, disable animations (apply moves instantly) or use only the 2D net.
-
-Developer notes
-- Visualization: create_3d_cube_visualization builds cubie-grouped meshes and applies per-frame transforms to keep stickers attached.
-- State: Streamlit `st.session_state` stores cube model, pending moves, animation flags and recent move history.
-- To extend solver: add a stronger heuristic (pattern DB) or integrate an optimized solver (Kociemba).
-- To offload animation to client: consider exporting Plotly frames/animations or a small JS renderer that accepts per-frame transforms.
+Developer guide (for contributors)
+- Main logic: `Rubik.py`
+  - RubikCube: cube state and move application
+  - Visualization: `create_3d_cube_visualization` and `create_2d_net_visualization`
+  - Solver wrapper: `RubiksSolver` uses external and internal solver
+  - Animation: placeholder-based in-place updates (avoids repeated Streamlit reruns)
+- Tips to extend:
+  - Integrate a Kociemba / two-phase solver for production-grade solving.
+  - Move animation to client-side (Plotly frames or minimal JS) to eliminate server-side blocking.
+  - Add keyboard shortcuts or hotkeys for manual moves (requires JS integration).
 
 Troubleshooting
-- If colors or faces appear incorrect, check the face-to-color mapping in `RubiksCube.color_map` and the conversion functions `_color_to_char` / `_char_to_color`.
-- If the app freezes during long solves, adjust `InternalSolver` time_limit and max_depth in `Rubik.py`.
-- If the external rubik library import fails, either install it or allow the internal solver to run.
+- If faces look incorrect: verify mappings in `_color_to_char` / `_char_to_color` and `color_map`.
+- If external solver import fails: either install the required `rubik` package or rely on the internal solver.
+- If app freezes during long solves: reduce `InternalSolver` time_limit or increase compute resources.
 
-License & Attribution
-- Add your preferred license here (e.g., MIT).
-- Mention any third-party libraries and assets (Plotly, Streamlit, logo).
+Security & licensing
+- No sensitive network calls are made by default.
+- Add your preferred license (e.g., MIT) and include attribution for third-party assets.
 
-Contact / Contribution
-- Open an issue or PR in this repository with bug reports or enhancement suggestions.
-- Small, focused PRs (visual tweaks, solver improvements) are easiest to review.
+Contributing
+- Fork, branch, and open PRs. Small, well-scoped changes are easiest to review.
+- Please include screenshots for UI/visual changes and tests for solver updates where applicable.
+
+Contact
+- Add contact info or GitHub repo issues link here.
+
+Acknowledgements
+- Built using Streamlit, Plotly and NumPy.
+
+Enjoy exploring and improving the cube visualizer!
