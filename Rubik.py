@@ -797,75 +797,65 @@ def main():
 
     # Sidebar with all controls and information
     with st.sidebar:
-
-            # Prepare ditimo logo as base64
+        # Logo / Title area (kept compact & professional)
         with open("logo.png", "rb") as img_file:
             img_bytes = img_file.read()
             img_base64 = base64.b64encode(img_bytes).decode()
 
-            # Use the styled HTML structure
-            st.markdown(
-                f"""
-                <div class="neon-border-container">
-                    <div class="neon-border">
-                        <img src="data:image/png;base64,{img_base64}" />
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            
-        # Move History
-        if st.session_state.move_history:
-
-            st.markdown(
-                "<h1 style='text-align: center;'>📝 Recent Moves</h1>", 
-                    unsafe_allow_html=True
-                )
-            st.write(" → ".join(st.session_state.move_history[-100:]))
-                
-        # Animation Settings
+        # Remove top whitespace: set margin-top to -10px and padding-top to 0
         st.markdown(
-        "<h1 style='text-align: center;'>⚙️ Animation Settings</h1>", 
-            unsafe_allow_html=True
+            f"""
+            <div style="text-align:center; margin-top:-10px; padding-top:0;">
+                <img src="data:image/png;base64,{img_base64}" style="max-width:100%; height:64px; object-fit:contain;"/>
+                <p style="margin:2px 0 8px 0; color:#6c757d; font-size:0.9rem;">
+                    Interactive 3D visualizer & solver (Streamlit + Plotly)
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
+
+        # Recent moves (compact)
+        if st.session_state.move_history:
+            st.subheader("Recent moves")
+            st.write(" → ".join(st.session_state.move_history[-50:]))
+
+        st.markdown("---")
+
+        # Animation settings group
+        st.subheader("Animation settings")
         st.session_state.scramble_moves = st.slider(
-             "Number of Scramble Moves",
-             min_value=5,
-             max_value=100,
-             value=20,
-             step=1,
-             help="Select the number of random moves for scrambling the cube"
-         )
-        # user controls for animation smoothness and speed
+            "Scramble length",
+            min_value=5,
+            max_value=100,
+            value=st.session_state.scramble_moves,
+            step=1,
+            help="Number of random moves used when scrambling the cube.",
+        )
         st.session_state.animation_frames = st.slider(
-            "Animation Smoothness (frames)",
-            min_value=30,
-            max_value=90,
+            "Smoothness (frames)",
+            min_value=4,
+            max_value=60,
             value=st.session_state.animation_frames,
             step=1,
-            help="Increase frames for smoother rotations (slower per frame)"
+            help="Higher = smoother rotation but more CPU.",
         )
         st.session_state.animation_speed = st.slider(
-            "Animation Speed (multiplier)",
+            "Animation speed",
             min_value=1,
             max_value=100,
             value=st.session_state.animation_speed,
             step=1,
-            help="Higher value makes animations progress faster"
+            help="Higher = faster animations (shorter pauses).",
         )
-        
+
         st.markdown("---")
-        
-        # Cube Actions Section
-        st.markdown(
-        "<h1 style='text-align: center;'>🎮 Cube Actions</h1>", 
-            unsafe_allow_html=True
-        )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Scramble", use_container_width=True):
+
+        # Cube actions
+        st.subheader("Cube actions")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Scramble", use_container_width=True):
                 moves = st.session_state.cube.scramble(st.session_state.scramble_moves)
                 st.session_state.move_history = moves.copy()
                 st.session_state.solution = []
@@ -873,9 +863,9 @@ def main():
                 st.session_state.auto_playing = False
                 st.session_state.animation_progress = 0
                 st.rerun()
-        with col2:
-            if st.button("✅ Solve", use_container_width=True):
-                with st.spinner("Solving cube..."):
+        with c2:
+            if st.button("Solve", use_container_width=True):
+                with st.spinner("Computing solution..."):
                     solver = RubiksSolver()
                     solution = solver.solve(st.session_state.cube)
                     if solution:
@@ -885,8 +875,8 @@ def main():
                     else:
                         st.session_state.solution = []
                         st.session_state.auto_playing = False
-        
-        if st.button("🔄 Reset Cube", use_container_width=True):
+
+        if st.button("Reset cube", use_container_width=True):
             st.session_state.cube = RubiksCube()
             st.session_state.solution = []
             st.session_state.current_step = 0
@@ -894,98 +884,92 @@ def main():
             st.session_state.move_history = []
             st.session_state.animation_progress = 0
             st.rerun()
-        
+
         st.markdown("---")
-        
-        # Manual Controls Section
-        st.markdown(
-        "<h1 style='text-align: center;'>🎯 Manual Controls</h1>", 
-            unsafe_allow_html=True
-        )
-        moves = ['F','R','U','B','L','D']
+
+        # Manual controls (compact grid)
+        st.subheader("Manual moves")
+        moves = ['F', 'R', 'U', 'B', 'L', 'D']
         primes = ["", "'", "2"]
-        
         for mv in moves:
             cols = st.columns(3)
             for i, p in enumerate(primes):
                 mvstr = mv + p
                 if cols[i].button(mvstr, use_container_width=True):
-                    # Start a smooth animation: set pending_move and start progress
                     st.session_state.pending_move = mvstr
                     st.session_state.animation_progress = 0.001
                     st.session_state.rotating_face = mv
                     st.session_state.clockwise = not mvstr.endswith("'")
                     st.session_state.auto_playing = False
-                    st.rerun()
-        
+                    # animation handled in-place (do not rerun here)
+
         st.markdown("---")
-        
-        # Solver Controls Section
+
+        # Solver controls (when available)
         if st.session_state.solution:
-            st.markdown(
-                "<h1 style='text-align: center;'>⚙️ Solver Controls</h1>", 
-                    unsafe_allow_html=True
-                )
-            
-            st.write(f"**Total moves:** {len(st.session_state.solution)}")
-            
-            # Display moves in a more compact format
-            moves_display = " ".join(st.session_state.solution)
-            st.text_area("Solution Sequence", moves_display, height=100, key="solution_display")
-            
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                if st.button("⏮ Previous", use_container_width=True):
+            st.subheader("Solver")
+            st.write(f"Moves: {len(st.session_state.solution)}")
+            st.text_area("Solution (compact)", " ".join(st.session_state.solution), height=80, key="solution_display")
+            s1, s2, s3 = st.columns(3)
+            with s1:
+                if st.button("◀", use_container_width=True):
                     if st.session_state.current_step > 0:
                         st.session_state.current_step -= 1
                         st.session_state.auto_playing = False
-                        # Rebuild cube state for both visualizations
                         temp_cube = RubiksCube()
                         for mvv in st.session_state.solution[:st.session_state.current_step]:
                             temp_cube.apply_move(mvv)
                         st.session_state.cube = temp_cube
                         st.rerun()
-            with c2:
+            with s2:
                 if st.button("⏸ Pause", use_container_width=True):
                     st.session_state.auto_playing = False
-                    st.rerun()
                 if st.button("▶ Play", use_container_width=True):
                     st.session_state.auto_playing = True
-                    st.rerun()
-            with c3:
-                if st.button("⏭ Next", use_container_width=True):
+            with s3:
+                if st.button("▶", use_container_width=True):
                     if st.session_state.current_step < len(st.session_state.solution):
-                        # Start animation for next solution move (defer apply until completion)
                         mv2 = st.session_state.solution[st.session_state.current_step]
                         st.session_state.pending_move = mv2
                         st.session_state.animation_progress = 0.001
                         st.session_state.rotating_face = mv2[0]
                         st.session_state.clockwise = not mv2.endswith("'")
                         st.session_state.auto_playing = False
-                        st.rerun()
-            
-            # Current step progress
-            if st.session_state.solution:
-                st.progress(st.session_state.current_step / len(st.session_state.solution))
-                st.write(f"Step {st.session_state.current_step + 1} of {len(st.session_state.solution)}")
-        
-        st.markdown("---")
-        
-        # Information Section
-        st.markdown("<h1 style='text-align: center;'>ℹ️ Solver Information</h1>", unsafe_allow_html=True)
 
-        with st.container():
-            st.markdown("<h3 style='text-align: center;'>🧊 Rubik's Cube Solver with Fallback System</h3>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'><strong>Academic Project | Data Science Course</strong></p>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'><em>University of Chinese Academy of Sciences</em></p>", unsafe_allow_html=True)
+            st.markdown("---")
 
-        st.markdown("---")
-
-        with st.container():
-            st.markdown("<p style='text-align: center;'><strong>Move Notation:</strong></p>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'>Clockwise: F, R, U, B, L, D</p>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'>Counter-clockwise: F', R', U', B', L', D'</p>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'>180° turns: F2, R2, U2, B2, L2, D2</p>", unsafe_allow_html=True)
+            # Professional informational expander explaining solver & performance tips
+            with st.expander("About this app and how it solves the cube", expanded=False):
+                st.markdown("**Overview**")
+                st.markdown(
+                    "- This app visualizes a 3×3 Rubik's Cube using Plotly Mesh3d and allows smooth layer rotations.\n"
+                    "- The solver pipeline is defensive: it first tries an external solver, then an internal search-based fallback, and finally a simple move-history undo as last resort."
+                )
+                st.markdown("**Solver pipeline (brief)**")
+                st.markdown(
+                    "- External solver: when available the app converts the current state into the external library's Cube object and asks that solver for a sequence.\n"
+                    "- Internal fallback: a lightweight IDA* implementation (configurable depth and time limit) is used if the external solver fails or is not present.\n"
+                    "- Final fallback: if no full solution is found, the app can reverse recent moves from the recorded move history to recover the solved state."
+                )
+                st.markdown("**Internal solver details**")
+                st.markdown(
+                    "- Algorithm: IDA* (iterative deepening A*) with a simple misplaced-sticker heuristic.\n"
+                    "- Limits: configured max depth and time-limit to avoid long blocking computations in the server.\n"
+                    "- Purpose: reliable recovery for short scrambles and to provide a fallback when external solver isn't available."
+                )
+                st.markdown("**Performance tips for Streamlit Cloud**")
+                st.write(
+                    "- Reduce 'Smoothness (frames)' to 8–20 on small instances.\n"
+                    "- Increase 'Animation speed' to shorten per-frame waits.\n"
+                    "- Use the 2D net when running on very small VMs or mobile browsers.\n"
+                    "- For production solving, consider integrating a dedicated two-phase solver (Kociemba) server-side."
+                )
+                st.markdown("**Contributing / Extending**")
+                st.markdown(
+                    "- Visualization: move animations client-side using Plotly frames or a small JS renderer to avoid server blocking.\n"
+                    "- Solver: replace the internal fallback with a production solver for guaranteed fast solves.\n"
+                    "- Tests: add unit tests for move application and solver correctness."
+                )
 
     # Main content area - both visualizations
     colA, colB = st.columns([3, 2])
