@@ -808,7 +808,7 @@ def main():
             <div style="text-align:center; margin-top:-10px; padding-top:0;">
                 <img src="data:image/png;base64,{img_base64}" style="max-width:100%; height:64px; object-fit:contain;"/>
                 <p style="margin:2px 0 8px 0; color:#6c757d; font-size:0.9rem;">
-                    Interactive 3D visualizer & solver (Streamlit + Plotly)
+                    Interactive Rubik's Cube Solver
                 </p>
             </div>
             """,
@@ -922,9 +922,9 @@ def main():
                         st.session_state.cube = temp_cube
                         st.rerun()
             with s2:
-                if st.button("⏸ Pause", use_container_width=True):
+                if st.button("⏸", use_container_width=True):
                     st.session_state.auto_playing = False
-                if st.button("▶ Play", use_container_width=True):
+                if st.button("▶︎•", use_container_width=True):
                     st.session_state.auto_playing = True
             with s3:
                 if st.button("▶", use_container_width=True):
@@ -976,7 +976,7 @@ def main():
     
     with colA:
         st.markdown(
-        "<h1 style='text-align: center;'>3D Cube Visualization</h1>", 
+        "<h1 style='text-align: center;'>3D</h1>", 
             unsafe_allow_html=True
         )
         fig3 = create_3d_cube_visualization(
@@ -990,7 +990,7 @@ def main():
 
     with colB:
         st.markdown(
-            "<h1 style='text-align: center;'>2D Cube Net</h1>", 
+            "<h1 style='text-align: center;'>2D</h1>", 
             unsafe_allow_html=True
         )
         fig2 = create_2d_net_visualization(
