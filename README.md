@@ -1,98 +1,123 @@
 # RubikCube — Interactive Visualizer & Solver
 
-Professional, interactive Rubik's Cube web app built with Streamlit and Plotly.  
-Features a crisp 3D visualization with physically-correct cubie rotations, a 2D net view, manual controls, scramble/solve, and a solver pipeline that uses an external solver with an internal IDA* fallback.
+Professional web app that visualizes a 3×3 Rubik's Cube and computes solutions.  
+Built with Streamlit (UI), Plotly (3D/2D rendering) and NumPy (state model). Live demo: https://rubikcube.streamlit.app/
 
-Badges
-- Streamlit · Plotly · NumPy
-
-Quick summary
+Summary
 - Language: Python
 - UI: Streamlit
 - 3D renderer: Plotly Mesh3d (cubie-grouped meshes)
-- Solver: External rubik library (primary) + Internal IDA* fallback (secondary)
-- File: main app — `Rubik.py`
+- Solver: External rubik solver (primary) + Internal IDA* fallback (secondary)
+- Main file: `Rubik.py`
 
-Why this project
-- Educational demo of cube state modelling, visualization and simple search-based solving.
-- Clean UI for teaching cube notation and step-by-step solution playback.
-- Modular design so visualization and solver can be improved independently.
-
-Interactive demo (what to try)
-1. Click "Scramble" to randomize the cube (choose scramble length in sidebar).
-2. Use manual controls (F, R, U, B, L, D with '', ', 2) to apply moves and observe smooth animations.
-3. Click "Solve" — the app uses an external solver if present; otherwise it will try the internal IDA* fallback.
-4. Use Play / Pause / Next / Previous to step through the computed solution with animations.
-
-Installation
-
-1. Create a virtual environment (recommended)
+Quick start
+1. Create and activate a virtualenv:
    - python -m venv .venv
    - Windows: .venv\Scripts\activate
    - macOS / Linux: source .venv/bin/activate
-
-2. Install requirements
+2. Install dependencies:
    - pip install -r requirements.txt
-   - If you have a different rubik package, install that and ensure names in requirements match.
-
-3. Run the app
+3. Run:
    - streamlit run Rubik.py
-   - Open the local URL shown by Streamlit (usually http://localhost:8501).
+4. Open the app in the browser (Streamlit prints the URL, usually http://localhost:8501).
 
-User interface (concise)
+Live demo
+- Deployed on Streamlit Cloud: https://rubikcube.streamlit.app/
 
-- Sidebar
-  - Logo and recent moves
-  - Animation Settings:
-    - Scramble length, Animation frames (smoothness), Animation speed (multiplier)
-  - Cube Actions: Scramble, Solve, Reset
-  - Manual Controls: Per-face move buttons (including primes and doubles)
-  - Solver Controls: Play / Pause / Next / Previous and solution text area
+What this project provides
+- Accurate cube state model (RubiksCube) and move application.
+- 3D visualization with grouped cubie meshes and physically-correct rotations.
+- 2D net view for a compact representation.
+- Manual controls, scramble/reset, solver pipeline and step-by-step solution playback.
+- Performance-oriented animation pipeline (client-playable assets and in-place updates).
 
-- Main area
-  - Left: 3D cube (interactive camera disabled for consistent view)
-  - Right: 2D net (fixed, non-interactive)
-  - Move history and progress shown in the sidebar
+How solving works (method)
+1. External solver (preferred)
+   - The app attempts to convert the internal cube state to the external library's cube object and invoke its solver. This is fast and reliable when available.
+2. Internal fallback: IDA* search
+   - If the external solver is missing or fails, the app runs a compact IDA* (Iterative Deepening A*) search as a fallback.
+   - Heuristic: count of misplaced stickers compared to each face center, scaled down to keep it admissible-ish for shallow searches.
+   - Limits: configurable maximum depth and time limit to avoid long-running server work.
+   - Purpose: recover solutions for short scrambles or to provide a deterministic fallback in environments lacking the external solver.
+3. Final fallback: move-history undo
+   - If neither solver returns a solution, the app can reverse recently applied moves (from the recorded move history) to return to a solved state.
 
-Solver internals (short)
-- Primary: Attempts to convert the app state to the external `rubik` library cube and run its solver.
-- Secondary: If the external solver fails, the app runs a compact IDA* search (InternalSolver) using a simple misplaced-sticker heuristic. This is intentionally conservative (configurable depth/time limit) and works for short scrambles.
-- Final fallback: If no solution is found, the app can reverse recent moves (move-history undo) as a last resort.
+Why this pipeline
+- Robustness: external solvers are strongest; internal search is a safety net.
+- Control: time/depth limits prevent server blocking.
+- User experience: clear feedback and a workable fallback even when environment constraints exist.
 
-Performance tuning (practical)
-- Reduce "Animation Smoothness (frames)" to lower client work.
-- Increase "Animation Speed" to shorten per-move delays.
-- Use the 2D net only for very slow machines (less GPU/JS overhead).
-- For best client performance, use modern browsers (Chrome/Edge) and avoid very large frame counts.
+Visualization & performance (important for Streamlit Cloud)
+- Avoid repeated Streamlit reruns during animations:
+  - Visual updates use placeholders (st.empty) to update charts in-place instead of forcing reruns.
+- Client-playable animations (recommended):
+  - Per-move animations are pre-rendered and cached (small sequence of PNG frames assembled into a GIF) so the browser plays the animation locally and the server does not serve each frame.
+  - Benefits: reduced server CPU use, no frequent network updates, smoother perceived animation.
+- Caching:
+  - Heavy geometry and generated GIFs are cached keyed by (serialized cube state + move) to avoid recomputation.
+- Tunables for low-resource deployments:
+  - Reduce "Smoothness (frames)" slider.
+  - Increase "Animation speed" to shorten per-frame delays.
+  - Use the 2D net-only mode for minimal rendering cost.
+- Future improvement path:
+  - Replace GIFs with Plotly frames and client-side animation (best UX, vector/WebGL), or use a small JS renderer for fully client-driven animations.
 
-Developer guide (for contributors)
-- Main logic: `Rubik.py`
-  - RubikCube: cube state and move application
-  - Visualization: `create_3d_cube_visualization` and `create_2d_net_visualization`
-  - Solver wrapper: `RubiksSolver` uses external and internal solver
-  - Animation: placeholder-based in-place updates (avoids repeated Streamlit reruns)
-- Tips to extend:
-  - Integrate a Kociemba / two-phase solver for production-grade solving.
-  - Move animation to client-side (Plotly frames or minimal JS) to eliminate server-side blocking.
-  - Add keyboard shortcuts or hotkeys for manual moves (requires JS integration).
+Code structure (concise)
+- Rubik.py
+  - RubiksCube: cube state, move application, serialization helpers
+  - create_3d_cube_visualization: builds the Plotly Mesh3d representation (grouped per cubie)
+  - create_2d_net_visualization: static planar net rendering (fast)
+  - InternalSolver: IDA* fallback implementation
+  - RubiksSolver: wrapper coordinating external solver, internal fallback and move-history fallback
+  - Animation pipeline: placeholder-based updates and cached per-move animations
 
-Troubleshooting
-- If faces look incorrect: verify mappings in `_color_to_char` / `_char_to_color` and `color_map`.
-- If external solver import fails: either install the required `rubik` package or rely on the internal solver.
-- If app freezes during long solves: reduce `InternalSolver` time_limit or increase compute resources.
+Design decisions and trade-offs
+- Mesh grouping: stickers grouped per cubie (fewer traces) to reduce Plotly overhead.
+- Caching vs memory: cache sizes tuned to balance repeated reuse and memory consumption on small VMs.
+- Conservative internal solver: avoids long blocking operations on the shared server; production-grade solving should integrate a dedicated, optimized solver (e.g., Kociemba/Kociemba2-phase).
 
-Security & licensing
-- No sensitive network calls are made by default.
-- Add your preferred license (e.g., MIT) and include attribution for third-party assets.
+Deployment
+- Deploy to Streamlit Cloud or any server that supports Streamlit.
+- Recommended small VM settings:
+  - Keep image export size reasonable (e.g., <= 480px) for GIF generation on the server.
+  - Use fewer frames to reduce generation time and GIF size.
+- Live deployed URL: https://rubikcube.streamlit.app/
+
+Developer notes
+- To add client-frame animations (Plotly frames) you will:
+  - Build a single Plotly figure with a frames array and a small JS control to autoplay frames in the browser.
+  - This eliminates server-side image export and produces smooth WebGL animations.
+- To optimize geometry further:
+  - Merge sticker quads into as few Mesh3d traces as possible.
+  - Avoid per-sticker traces that cause heavy rendering overhead.
+- Testing:
+  - Add unit tests for move application (apply_move) and round-trip conversions to/from external cube formats.
+
+License — MIT
+Copyright (c) 2025 Your Name
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 Contributing
-- Fork, branch, and open PRs. Small, well-scoped changes are easiest to review.
-- Please include screenshots for UI/visual changes and tests for solver updates where applicable.
+- Fork → branch → PR. Keep changes small and focused.
+- Include screenshots for visual changes and tests for solver/logic updates.
 
-Contact
-- Add contact info or GitHub repo issues link here.
-
-Acknowledgements
-- Built using Streamlit, Plotly and NumPy.
-
-Enjoy exploring and improving the cube visualizer!
+Contact & issues
+- Use the repository issues to report bugs or request features.
+- Live demo: https://rubikcube.streamlit.app/
