@@ -1,3 +1,18 @@
+"""
+RubikCube Streamlit app
+
+This module implements a 3x3 Rubik's Cube model, visualization helpers and a
+lightweight solver pipeline for use in a Streamlit web app. Visual rendering is
+performed with Plotly; the solver pipeline tries an external solver, falls back
+to an internal IDA* search, and finally can undo recent moves from history.
+
+Key design goals:
+- Keep the cube model simple and testable.
+- Group 3D geometry efficiently to reduce Plotly overhead.
+- Provide a robust solver pipeline with practical time/depth limits.
+- Use concise, professional documentation (docstrings) rather than noisy inline comments.
+"""
+
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
@@ -8,16 +23,33 @@ from rubik.optimize import optimize_moves
 from rubik.cube import Cube
 import base64
 
-
 if "scramble_moves" not in st.session_state:
     st.session_state.scramble_moves = 20
 
+
 class RubiksCube:
+    """
+    In-memory representation of a 3x3 Rubik's Cube.
+
+    Faces are stored as 3x3 numpy arrays keyed by standard face letters:
+    U, R, F, D, L, B. Color names are used in the arrays and a color_map
+    translates names to hex codes for visualization.
+
+    Public methods:
+    - is_solved()
+    - rotate_face(face_char, clockwise=True)
+    - apply_move(move)
+    - scramble(moves=...)
+    - get_cube_state()
+    - to_rubik_lib_cube() / from_rubik_lib_cube()
+    - clone()
+    """
+
     def __init__(self):
         # Corrected face definitions with proper orientation
         self.faces = {
             'U': np.full((3, 3), 'white', dtype='<U6'),    # Up
-            'R': np.full((3, 3), 'red', dtype='<U6'),      # Right  <-- fixed typo 're09d' -> 'red'
+            'R': np.full((3, 3), 'red', dtype='<U6'),      # Right
             'F': np.full((3, 3), 'green', dtype='<U6'),    # Front
             'D': np.full((3, 3), 'yellow', dtype='<U6'),   # Down
             'L': np.full((3, 3), 'orange', dtype='<U6'),   # Left
@@ -33,13 +65,19 @@ class RubiksCube:
         }
 
     def is_solved(self):
+        """Return True when each face has a uniform color."""
         for face in self.faces.values():
             if not np.all(face == face[0, 0]):
                 return False
         return True
 
     def rotate_face(self, face_char, clockwise=True):
-        """Rotate a face and its adjacent edges"""
+        """
+        Rotate a face 90 degrees (clockwise by default) and update adjacent edges.
+
+        The face's 3x3 matrix is rotated and the neighboring edge strips are moved
+        accordingly. This method mutates the cube in place.
+        """
         if clockwise:
             # Rotate the face itself clockwise
             self.faces[face_char] = np.rot90(self.faces[face_char], 3)
@@ -52,7 +90,11 @@ class RubiksCube:
             self._rotate_adjacent_edges(face_char, clockwise)
 
     def _rotate_adjacent_edges(self, face_char, clockwise):
-        """Rotate the adjacent edge pieces of a face"""
+        """
+        Internal helper to update the rows/columns of faces adjacent to a rotated face.
+
+        The mapping is implemented explicitly for clarity and correctness.
+        """
         if face_char == 'F':
             if clockwise:
                 # Save top row of U
@@ -144,6 +186,12 @@ class RubiksCube:
                 self.faces['L'][2, :] = temp
 
     def apply_move(self, move):
+        """
+        Apply a move string in standard notation:
+        - "F", "R", "U", "B", "L", "D" for clockwise quarter turns
+        - suffix "'" for counter-clockwise
+        - suffix "2" for a double turn
+        """
         if move.endswith("'"):
             face_char = move[0]
             clockwise = False
@@ -162,10 +210,13 @@ class RubiksCube:
             raise ValueError(f"Invalid move: {move}")
 
     def scramble(self, moves=st.session_state.scramble_moves):
+        """Apply a random sequence of moves and return the move list."""
         moves_list = []
-        possible_moves = ['F', 'R', 'U', 'B', 'L', 'D',
-                          "F'", "R'", "U'", "B'", "L'", "D'",
-                          'F2', 'R2', 'U2', 'B2', 'L2', 'D2']
+        possible_moves = [
+            'F', 'R', 'U', 'B', 'L', 'D',
+            "F'", "R'", "U'", "B'", "L'", "D'",
+            'F2', 'R2', 'U2', 'B2', 'L2', 'D2'
+        ]
         for _ in range(moves):
             m = random.choice(possible_moves)
             self.apply_move(m)
@@ -173,46 +224,37 @@ class RubiksCube:
         return moves_list
 
     def get_cube_state(self):
+        """Return a shallow copy of the faces dict suitable for visualization."""
         return {k: v.copy() for k, v in self.faces.items()}
-    
+
     def to_rubik_lib_cube(self):
-        """Convert our cube representation to the rubik library's cube format"""
+        """
+        Convert to the external rubik library's flat-string format expected by the solver.
+        The positions follow the library's 54-character ordering.
+        """
         cube_str = ""
-        
-        # Up face (white) - positions 0-8
         for i in range(3):
             for j in range(3):
                 cube_str += self._color_to_char(self.faces['U'][i, j])
-        
-        # Right face (red) - positions 9-17
         for i in range(3):
             for j in range(3):
                 cube_str += self._color_to_char(self.faces['R'][i, j])
-        
-        # Front face (green) - positions 18-26
         for i in range(3):
             for j in range(3):
                 cube_str += self._color_to_char(self.faces['F'][i, j])
-        
-        # Down face (yellow) - positions 27-35
         for i in range(3):
             for j in range(3):
                 cube_str += self._color_to_char(self.faces['D'][i, j])
-        
-        # Left face (orange) - positions 36-44
         for i in range(3):
             for j in range(3):
                 cube_str += self._color_to_char(self.faces['L'][i, j])
-        
-        # Back face (blue) - positions 45-53
         for i in range(3):
             for j in range(3):
                 cube_str += self._color_to_char(self.faces['B'][i, j])
-                
         return Cube(cube_str)
-    
+
     def _color_to_char(self, color):
-        """Convert color name to rubik library character"""
+        """Map internal color names to rubik library face characters."""
         color_map = {
             'white': 'U',
             'red': 'R',
@@ -222,9 +264,9 @@ class RubiksCube:
             'blue': 'B'
         }
         return color_map.get(color, 'U')
-    
+
     def _char_to_color(self, char):
-        """Convert rubik library character to color name"""
+        """Map rubik library characters back to internal color names."""
         char_map = {
             'U': 'white',
             'R': 'red',
@@ -234,52 +276,32 @@ class RubiksCube:
             'B': 'blue'
         }
         return char_map.get(char, 'white')
-    
+
     def from_rubik_lib_cube(self, rubik_cube):
-        """Update our cube from a rubik library cube"""
+        """Populate internal faces from the external library's flat string."""
         cube_str = rubik_cube.flat_str()
-        
-        # Extract faces from the 54-character string
         idx = 0
-        
-        # Up face (positions 0-8)
         for i in range(3):
             for j in range(3):
-                self.faces['U'][i, j] = self._char_to_color(cube_str[idx])
-                idx += 1
-        
-        # Right face (positions 9-17)
+                self.faces['U'][i, j] = self._char_to_color(cube_str[idx]); idx += 1
         for i in range(3):
             for j in range(3):
-                self.faces['R'][i, j] = self._char_to_color(cube_str[idx])
-                idx += 1
-        
-        # Front face (positions 18-26)
+                self.faces['R'][i, j] = self._char_to_color(cube_str[idx]); idx += 1
         for i in range(3):
             for j in range(3):
-                self.faces['F'][i, j] = self._char_to_color(cube_str[idx])
-                idx += 1
-        
-        # Down face (positions 27-35)
+                self.faces['F'][i, j] = self._char_to_color(cube_str[idx]); idx += 1
         for i in range(3):
             for j in range(3):
-                self.faces['D'][i, j] = self._char_to_color(cube_str[idx])
-                idx += 1
-        
-        # Left face (positions 36-44)
+                self.faces['D'][i, j] = self._char_to_color(cube_str[idx]); idx += 1
         for i in range(3):
             for j in range(3):
-                self.faces['L'][i, j] = self._char_to_color(cube_str[idx])
-                idx += 1
-        
-        # Back face (positions 45-53)
+                self.faces['L'][i, j] = self._char_to_color(cube_str[idx]); idx += 1
         for i in range(3):
             for j in range(3):
-                self.faces['B'][i, j] = self._char_to_color(cube_str[idx])
-                idx += 1
+                self.faces['B'][i, j] = self._char_to_color(cube_str[idx]); idx += 1
 
     def clone(self):
-        """Return a deep copy of this cube for search/apply without mutating original."""
+        """Return a deep copy suitable for search operations that must not mutate the original."""
         new = RubiksCube()
         for k, v in self.faces.items():
             new.faces[k] = v.copy()
@@ -287,79 +309,102 @@ class RubiksCube:
 
 
 class InternalSolver:
-	"""Simple IDA* solver using RubiksCube.clone() and apply_move.
-	   Heuristic: count of misplaced stickers (divided so heuristic is admissible-ish).
-	"""
-	def __init__(self, max_depth=20, time_limit=8.0):
-		self.max_depth = max_depth
-		self.time_limit = time_limit
-		self.start_time = None
-		self.moves = ['F','R','U','B','L','D',
-					  "F'", "R'", "U'", "B'", "L'", "D'",
-					  'F2', 'R2', 'U2', 'B2', 'L2', 'D2']
+    """
+    Lightweight IDA* solver used as a fallback.
 
-	def _heuristic(self, cube: RubiksCube):
-		# Count stickers not equal to face center; each move can fix multiple stickers,
-		# divide by 8 to keep heuristic small (admissible-ish for shallow searches).
-		cnt = 0
-		for face_char, face in cube.faces.items():
-			center = face[1,1]
-			cnt += np.sum(face != center)
-		return int(np.ceil(cnt / 8))
+    - Heuristic: misplaced sticker count divided by 8 (keeps heuristic small for shallow searches).
+    - Configurable time_limit and max_depth prevent excessive server-side computation.
+    - Intended as a safety net, not a production-grade solver.
+    """
 
-	def _inverse(self, m):
-		if m.endswith("'"):
-			return m[:-1]
-		if m.endswith("2"):
-			return m
-		return m + "'"
+    def __init__(self, max_depth=20, time_limit=8.0):
+        self.max_depth = max_depth
+        self.time_limit = time_limit
+        self.start_time = None
+        self.moves = [
+            'F', 'R', 'U', 'B', 'L', 'D',
+            "F'", "R'", "U'", "B'", "L'", "D'",
+            'F2', 'R2', 'U2', 'B2', 'L2', 'D2'
+        ]
 
-	def solve(self, cube: RubiksCube):
-		self.start_time = time.time()
-		if cube.is_solved():
-			return []
-		# IDA* loop
-		bound = self._heuristic(cube)
-		if bound == 0:
-			return []
-		path = []
+    def _heuristic(self, cube: RubiksCube):
+        """Simple admissible-ish heuristic for shallow searches."""
+        cnt = 0
+        for face_char, face in cube.faces.items():
+            center = face[1, 1]
+            cnt += np.sum(face != center)
+        return int(np.ceil(cnt / 8))
 
-		def dfs(node: RubiksCube, g: int, bound: int, last_move: str):
-			if time.time() - self.start_time > self.time_limit:
-				return None, float('inf')
-			h = self._heuristic(node)
-			f = g + h
-			if f > bound or g > self.max_depth:
-				return None, f
-			if node.is_solved():
-				return [], f
-			min_t = float('inf')
-			for mv in self.moves:
-				# prune immediate inverse
-				if last_move and self._inverse(last_move) == mv:
-					continue
-				# apply move on clone
-				new_node = node.clone()
-				new_node.apply_move(mv)
-				res, t = dfs(new_node, g+1, bound, mv)
-				if res is not None:
-					return [mv] + res, t
-				if t < min_t:
-					min_t = t
-			return None, min_t
+    def _inverse(self, m):
+        """Return the inverse of a move string."""
+        if m.endswith("'"):
+            return m[:-1]
+        if m.endswith("2"):
+            return m
+        return m + "'"
 
-		while True:
-			if time.time() - self.start_time > self.time_limit or bound > self.max_depth:
-				return []
-			result, t = dfs(cube.clone(), 0, bound, None)
-			if result is not None:
-				return result
-			if t == float('inf'):
-				return []
-			bound = int(t)
+    def solve(self, cube: RubiksCube):
+        """
+        IDA* entry point. Returns a move list if a solution is found within limits,
+        otherwise an empty list.
+        """
+        self.start_time = time.time()
+        if cube.is_solved():
+            return []
+        # IDA* loop
+        bound = self._heuristic(cube)
+        if bound == 0:
+            return []
+        path = []
+
+        def dfs(node: RubiksCube, g: int, bound: int, last_move: str):
+            """
+            Recursive depth-first search with pruning by f = g + h.
+            Returns (solution_list, f_or_bound).
+            """
+            if time.time() - self.start_time > self.time_limit:
+                return None, float('inf')
+            h = self._heuristic(node)
+            f = g + h
+            if f > bound or g > self.max_depth:
+                return None, f
+            if node.is_solved():
+                return [], f
+            min_t = float('inf')
+            for mv in self.moves:
+                # prune immediate inverse
+                if last_move and self._inverse(last_move) == mv:
+                    continue
+                # apply move on clone
+                new_node = node.clone()
+                new_node.apply_move(mv)
+                res, t = dfs(new_node, g + 1, bound, mv)
+                if res is not None:
+                    return [mv] + res, t
+                if t < min_t:
+                    min_t = t
+            return None, min_t
+
+        while True:
+            if time.time() - self.start_time > self.time_limit or bound > self.max_depth:
+                return []
+            result, t = dfs(cube.clone(), 0, bound, None)
+            if result is not None:
+                return result
+            if t == float('inf'):
+                return []
+            bound = int(t)
 
 
 def create_3d_cube_visualization(cube_state, color_map, animation_phase=0, rotating_face=None, clockwise=True):
+    """
+    Build a Plotly 3D figure showing the cube.
+
+    - cube_state: dict of face 3x3 arrays
+    - color_map: mapping color name -> hex
+    - animation_phase: float in [0,1] controlling partial rotation
+    - rotating_face / clockwise: optional rotation layer info
+    """
     fig = go.Figure()
     
     # face normals from previous setup (keeps sticker orientation logic)
@@ -375,6 +420,7 @@ def create_3d_cube_visualization(cube_state, color_map, animation_phase=0, rotat
     # helper to snap a coordinate to nearest cubie center (layer centers are at -1.5, 0, 1.5)
     layer_centers = [-1.5, 0.0, 1.5]
     def nearest_center(v):
+        """Find nearest layer center for grouping stickers into cubies."""
         return min(layer_centers, key=lambda c: abs(c - v))
     
     size = 0.9  # sticker quad size (keeps same sticker scale)
@@ -514,7 +560,7 @@ def create_3d_cube_visualization(cube_state, color_map, animation_phase=0, rotat
     return fig
 
 def _is_sticker_on_face(face_char, i, j, rotating_face):
-    """Check if a sticker is part of the rotating face layer"""
+    """Return True when the sticker at (face_char, i, j) participates in rotating_face layer."""
     if rotating_face == 'F':
         return face_char == 'F' or (face_char == 'U' and i == 2) or (face_char == 'D' and i == 0) or (face_char == 'R' and j == 0) or (face_char == 'L' and j == 2)
     elif rotating_face == 'B':
@@ -530,7 +576,7 @@ def _is_sticker_on_face(face_char, i, j, rotating_face):
     return False
 
 def _rotate_sticker(x, y, z, face, angle):
-    """Rotate a sticker around the appropriate axis"""
+    """Apply a rigid rotation for a sticker around the axis corresponding to 'face'."""
     angle_rad = np.radians(angle)
     cos_a = np.cos(angle_rad)
     sin_a = np.sin(angle_rad)
@@ -569,34 +615,46 @@ def _rotate_sticker(x, y, z, face, angle):
     return [x, y, z]
 
 def add_sticker(fig, center, normal, color):
+    """Add a Mesh3d quad for a single sticker to a Plotly figure."""
     x, y, z = center
     size = 0.9
     if abs(normal[0]) == 1:
         verts = [
-            [x, y-size/2, z-size/2], [x, y+size/2, z-size/2],
-            [x, y+size/2, z+size/2], [x, y-size/2, z+size/2]
+            [x, y - size / 2, z - size / 2],
+            [x, y + size / 2, z - size / 2],
+            [x, y + size / 2, z + size / 2],
+            [x, y - size / 2, z + size / 2]
         ]
     elif abs(normal[1]) == 1:
         verts = [
-            [x-size/2, y, z-size/2], [x+size/2, y, z-size/2],
-            [x+size/2, y, z+size/2], [x-size/2, y, z+size/2]
+            [x - size / 2, y, z - size / 2],
+            [x + size / 2, y, z - size / 2],
+            [x + size / 2, y, z + size / 2],
+            [x - size / 2, y, z + size / 2]
         ]
     else:
         verts = [
-            [x-size/2, y-size/2, z], [x+size/2, y-size/2, z],
-            [x+size/2, y+size/2, z], [x-size/2, y+size/2, z]
+            [x - size / 2, y - size / 2, z],
+            [x + size / 2, y - size / 2, z],
+            [x + size / 2, y + size / 2, z],
+            [x - size / 2, y + size / 2, z]
         ]
     fig.add_trace(go.Mesh3d(
         x=[v[0] for v in verts],
         y=[v[1] for v in verts],
         z=[v[2] for v in verts],
-        i=[0,0], j=[1,2], k=[2,3],
+        i=[0, 0], j=[1, 2], k=[2, 3],
         color=color,
         opacity=1,
         flatshading=True
     ))
 
 def create_2d_net_visualization(cube_state, color_map, animation_phase=0, rotating_face=None, clockwise=True):
+    """
+    Construct a compact 2D net representation as a Plotly figure.
+
+    The layout is fixed and non-interactive to ensure a stable view in the UI.
+    """
     fig = go.Figure()
     
     # Define fixed positions for each face in the net
@@ -689,7 +747,15 @@ def create_2d_net_visualization(cube_state, color_map, animation_phase=0, rotati
     
     return fig
 
+
 class RubiksSolver:
+    """
+    High-level solver wrapper.
+
+    The solve() method attempts the external solver first, then the InternalSolver,
+    and finally returns a simple move-history reversal if nothing else succeeds.
+    """
+
     def __init__(self):
         pass
 
@@ -736,7 +802,7 @@ class RubiksSolver:
             return self._fallback_solution(cube)
     
     def _is_valid_cube(self, rubik_cube):
-        """Check if the cube state is valid"""
+        """Basic validation for external solver input."""
         try:
             # Try to access cube properties to check validity
             cube_str = rubik_cube.flat_str()
@@ -745,8 +811,10 @@ class RubiksSolver:
             return False
     
     def _fallback_solution(self, cube):
-        """Provide a fallback solution when the main solver fails"""
-        # This is a simple approach - just reverse the last moves
+        """
+        Produce a conservative fallback by reversing recent moves from move_history.
+        Intended as a last-resort recovery mechanism.
+        """
         if hasattr(st.session_state, 'move_history') and st.session_state.move_history:
             # Reverse the moves and their directions
             reversed_moves = []
@@ -762,7 +830,14 @@ class RubiksSolver:
 
 
 def main():
+    """
+    Application entry point for Streamlit.
+
+    Responsible for page configuration, loading assets, UI layout, interaction
+    handlers, and coordinating visualization and solver calls.
+    """
     st.set_page_config(page_title="rubik's cube solver", layout="wide")
+
     # Load the CSS files
     def load_css(filename):
         with open(filename) as f:
@@ -776,8 +851,6 @@ def main():
 
     # load border style (for logo)
     load_css(r"Styles/logo_sidebar.css")
-
-    
 
     if 'cube' not in st.session_state:
         st.session_state.cube = RubiksCube()
