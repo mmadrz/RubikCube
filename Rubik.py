@@ -22,10 +22,6 @@ from rubik.solve import Solver
 from rubik.optimize import optimize_moves
 from rubik.cube import Cube
 import base64
-import imageio
-import io
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
 
 if "scramble_moves" not in st.session_state:
     st.session_state.scramble_moves = 20
@@ -930,114 +926,6 @@ class RubiksSolver:
                     reversed_moves.append(move)  # Keep double moves as is
             return reversed_moves
         return []
-
-
-def _encode_cube_state_numeric(cube_state):
-    """
-    Convert cube_state dict into a stable numeric vector (length 54).
-    Colors are mapped to small integers so the ML model receives compact features.
-    Order: U, R, F, D, L, B; rows major per face.
-    """
-    color_to_int = {
-        "white": 0,
-        "red": 1,
-        "green": 2,
-        "yellow": 3,
-        "orange": 4,
-        "blue": 5,
-    }
-    order = ["U", "R", "F", "D", "L", "B"]
-    vec = []
-    for f in order:
-        face = cube_state[f]
-        for i in range(3):
-            for j in range(3):
-                vec.append(color_to_int.get(face[i, j], 0))
-    return vec
-
-
-@st.cache_data(max_entries=8)
-def _train_data_driven_model(n_samples=300, max_scramble=12, max_examples=800):
-    """
-    Generate a small supervised dataset using the internal solver on random scrambles,
-    then fit a RandomForest classifier. This is intentionally conservative in size
-    and time to be viable on Streamlit Cloud.
-    Returns (clf, label_encoder) or None on failure.
-    """
-    X, y = [], []
-    solver_for_data = InternalSolver(
-        max_depth=18, time_limit=0.8
-    )  # short per-sample time
-    samples = 0
-    for _ in range(n_samples):
-        c = RubiksCube()
-        scr_len = random.randint(1, max_scramble)
-        scr = c.scramble(scr_len)
-        sol = solver_for_data.solve(c.clone())
-        if not sol:
-            continue
-        temp = c.clone()
-        for mv in sol:
-            X.append(_encode_cube_state_numeric(temp.get_cube_state()))
-            y.append(mv)
-            temp.apply_move(mv)
-            samples += 1
-            if samples >= max_examples:
-                break
-        if samples >= max_examples:
-            break
-    if not X:
-        return None
-    le = LabelEncoder()
-    y_enc = le.fit_transform(y)
-    clf = RandomForestClassifier(n_estimators=50, n_jobs=1, random_state=42)
-    clf.fit(X, y_enc)
-    return clf, le
-
-
-class DataDrivenSolver:
-    """
-    Lightweight data-driven solver that predicts next moves using a cached model.
-    The solver predicts one move at a time and simulates it on a clone until solved
-    or until max_steps. If the model is unavailable or fails, returns [] so caller
-    can fallback to algorithmic solvers.
-    """
-
-    def __init__(self, train_if_missing=True):
-        self.train_if_missing = train_if_missing
-        self._model_tuple = None
-
-    def _ensure_model(self):
-        if self._model_tuple is not None:
-            return self._model_tuple
-        model = _train_data_driven_model()
-        if model is None and self.train_if_missing:
-            # try a smaller training run as a last attempt
-            model = _train_data_driven_model(
-                n_samples=120, max_scramble=8, max_examples=300
-            )
-        self._model_tuple = model
-        return model
-
-    def solve(self, cube: RubiksCube, max_steps=200):
-        model_le = self._ensure_model()
-        if not model_le:
-            return []
-        clf, le = model_le
-        state = cube.clone()
-        moves = []
-        for _ in range(max_steps):
-            x = _encode_cube_state_numeric(state.get_cube_state())
-            try:
-                pred_idx = clf.predict([x])[0]
-                mv = le.inverse_transform([pred_idx])[0]
-            except Exception:
-                return []  # model failed -> allow fallback
-            state.apply_move(mv)
-            moves.append(mv)
-            if state.is_solved():
-                return moves
-        return []  # model couldn't solve within budget
 
 
 def main():
