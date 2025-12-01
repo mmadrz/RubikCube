@@ -1113,41 +1113,6 @@ def main():
 
             st.markdown("---")
 
-            # Professional informational expander explaining solver & performance tips
-            with st.expander(
-                "About this app and how it solves the cube", expanded=False
-            ):
-                st.markdown("**Overview**")
-                st.markdown(
-                    "- This app visualizes a 3×3 Rubik's Cube using Plotly Mesh3d and allows smooth layer rotations.\n"
-                    "- The solver pipeline is defensive: it first tries an external solver, then an internal search-based fallback, and finally a simple move-history undo as last resort."
-                )
-                st.markdown("**Solver pipeline (brief)**")
-                st.markdown(
-                    "- External solver: when available the app converts the current state into the external library's Cube object and asks that solver for a sequence.\n"
-                    "- Internal fallback: a lightweight IDA* implementation (configurable depth and time limit) is used if the external solver fails or is not present.\n"
-                    "- Final fallback: if no full solution is found, the app can reverse recent moves from the recorded move history to recover the solved state."
-                )
-                st.markdown("**Internal solver details**")
-                st.markdown(
-                    "- Algorithm: IDA* (iterative deepening A*) with a simple misplaced-sticker heuristic.\n"
-                    "- Limits: configured max depth and time-limit to avoid long blocking computations in the server.\n"
-                    "- Purpose: reliable recovery for short scrambles and to provide a fallback when external solver isn't available."
-                )
-                st.markdown("**Performance tips for Streamlit Cloud**")
-                st.write(
-                    "- Reduce 'Smoothness (frames)' to 8–20 on small instances.\n"
-                    "- Increase 'Animation speed' to shorten per-frame waits.\n"
-                    "- Use the 2D net when running on very small VMs or mobile browsers.\n"
-                    "- For production solving, consider integrating a dedicated two-phase solver (Kociemba) server-side."
-                )
-                st.markdown("**Contributing / Extending**")
-                st.markdown(
-                    "- Visualization: move animations client-side using Plotly frames or a small JS renderer to avoid server blocking.\n"
-                    "- Solver: replace the internal fallback with a production solver for guaranteed fast solves.\n"
-                    "- Tests: add unit tests for move application and solver correctness."
-                )
-
     # Main content area - both visualizations
     colA, colB = st.columns([3, 2])
 
