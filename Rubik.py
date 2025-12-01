@@ -977,11 +977,8 @@ def main():
         # Remove top whitespace: set margin-top to -10px and padding-top to 0
         st.markdown(
             f"""
-            <div style="text-align:center; margin-top:-10px; padding-top:0;">
-                <img src="data:image/png;base64,{img_base64}" style="max-width:100%; height:64px; object-fit:contain;"/>
-                <p style="margin:2px 0 8px 0; color:#6c757d; font-size:0.9rem;">
-                    Interactive Rubik's Cube Solver
-                </p>
+            <div style="text-align:center; margin-top:-20px; padding-top:-10;">
+                <img src="data:image/png;base64,{img_base64}" style="max-width:120%; height:64px; object-fit:contain;"/>
             </div>
             """,
             unsafe_allow_html=True,
@@ -990,7 +987,7 @@ def main():
         # Recent moves (compact)
         if st.session_state.move_history:
             st.subheader("Recent moves")
-            st.write(" → ".join(st.session_state.move_history[-50:]))
+            st.write(" → ".join(st.session_state.move_history[-20:]))
 
         st.markdown("---")
 
@@ -1037,16 +1034,15 @@ def main():
                 st.rerun()
         with c2:
             if st.button("Solve", use_container_width=True):
-                with st.spinner("Computing solution..."):
-                    solver = RubiksSolver()
-                    solution = solver.solve(st.session_state.cube)
-                    if solution:
-                        st.session_state.solution = solution
-                        st.session_state.current_step = 0
-                        st.session_state.auto_playing = True
-                    else:
-                        st.session_state.solution = []
-                        st.session_state.auto_playing = False
+                solver = RubiksSolver()
+                solution = solver.solve(st.session_state.cube)
+                if solution:
+                    st.session_state.solution = solution
+                    st.session_state.current_step = 0
+                    st.session_state.auto_playing = True
+                else:
+                    st.session_state.solution = []
+                    st.session_state.auto_playing = False
 
         if st.button("Reset cube", use_container_width=True):
             st.session_state.cube = RubiksCube()
