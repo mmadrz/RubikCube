@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-brightgreen?logo=streamlit)
 
-A professional web application for visualizing and solving 3×3 Rubik's Cubes with a robust multi-tier solver pipeline. This project was created as part of a class project for the Data Science course at University of Chinese Academy of Sciences (UCAS), under the guidance of Prof. Tiejiān Luó.
+A professional web application for visualizing and solving 3×3 Rubik's Cubes with a robust multi-tier solver pipeline. This project was created as part of a class project for the Data Science course at **University of Chinese Academy of Sciences (UCAS)**, under the guidance of **Prof. Tiejiān Luó**. You can reach him at [tiejianluo@gmail.com](mailto:tiejianluo@gmail.com).
 
 **Live Demo:** [https://rubikcube.streamlit.app/](https://rubikcube.streamlit.app/)
 
