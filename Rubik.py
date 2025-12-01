@@ -1172,7 +1172,7 @@ def main():
             st.session_state.animation_progress = 0.0
             st.session_state.rotating_face = None
         # small sleep to avoid hammering reruns (keeps animation smooth)
-        time.sleep(0.03)
+        time.sleep(0.3)
         st.rerun()
 
     # Auto-play functionality
