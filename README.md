@@ -52,7 +52,7 @@ A professional web application for visualizing and solving 3×3 Rubik's Cubes wi
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/RubikCube.git
+   git clone https://github.com/mmadrz/RubikCube.git
    cd RubikCube
    ```
 
@@ -320,34 +320,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
-
-For the full license text, see the `LICENSE` file in the repository root.
-
----
-
-## 🔗 Links & Resources
-
-- **Live Demo:** [https://rubikcube.streamlit.app/](https://rubikcube.streamlit.app/)
-- **GitHub:** [https://github.com/yourusername/RubikCube](https://github.com/yourusername/RubikCube)
-- **Rubik's Cube Notation:** [https://ruwix.com/the-rubiks-cube/notation/](https://ruwix.com/the-rubiks-cube/notation/)
-- **Plotly Docs:** [https://plotly.com/python/](https://plotly.com/python/)
-- **Streamlit Docs:** [https://docs.streamlit.io/](https://docs.streamlit.io/)
-
----
-
-## 📞 Support & Issues
-
-- **Report a Bug:** [Open an issue on GitHub](https://github.com/yourusername/RubikCube/issues)
-- **Request a Feature:** [Discussion board](https://github.com/yourusername/RubikCube/discussions)
-- **Security Concern:** Please email directly instead of opening a public issue.
-
----
-
-## 🙏 Acknowledgments
-
-- [rubik-cube](https://github.com/muodov/rubik) library for external solver integration.
-- [Streamlit](https://streamlit.io/) for the amazing web framework.
-- [Plotly](https://plotly.com/) for 3D visualization capabilities.
 
 ---
 
