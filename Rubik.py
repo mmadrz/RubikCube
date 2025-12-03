@@ -995,7 +995,7 @@ def main():
         st.subheader("Animation settings")
         st.session_state.scramble_moves = st.slider(
             "Scramble length",
-            min_value=5,
+            min_value=1,
             max_value=100,
             value=st.session_state.scramble_moves,
             step=1,
